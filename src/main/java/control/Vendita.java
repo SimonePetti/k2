@@ -1,5 +1,6 @@
 package control;
 
+import org.apache.commons.text.StringEscapeUtils;
 import java.io.File;
 import java.io.IOException;
 import java.sql.SQLException;
@@ -59,23 +60,26 @@ public class Vendita extends HttpServlet {
 		                    product.setImmagine(name);
 		                }
 		                else {
+		                	
+		                	String fieldValue = StringEscapeUtils.escapeHtml4(item.getString());
+		                	
 		                	if (item.getFieldName().compareTo("nome") == 0) {
-		                		product.setNome(item.getString());
+		                		product.setNome(fieldValue);
 		                	}
 		                	else if (item.getFieldName().compareTo("prezzo") == 0) {
-		                		product.setPrezzo(Double.parseDouble(item.getString()));
+		                		product.setPrezzo(Double.parseDouble(fieldValue));
 		                	}
 		                	else if (item.getFieldName().compareTo("spedizione") == 0) {
-		                		product.setSpedizione(Double.parseDouble(item.getString()));
+		                		product.setSpedizione(Double.parseDouble(fieldValue));
 		                	}
 		                	else if (item.getFieldName().compareTo("tipologia") == 0) {
-		                		product.setTipologia(item.getString());
+		                		product.setTipologia(fieldValue);
 		                	}
 							else if (item.getFieldName().compareTo("tag") == 0) {
-								product.setTag(item.getString());
+								product.setTag(fieldValue);
 							}
 							else if (item.getFieldName().compareTo("descrizione") == 0) {
-		                		product.setDescrizione(item.getString());
+		                		product.setDescrizione(fieldValue);
 		                	}
 		                }
 		            }
@@ -114,3 +118,4 @@ public class Vendita extends HttpServlet {
 	}
 
 }
+
