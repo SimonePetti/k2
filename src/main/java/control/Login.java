@@ -1,5 +1,6 @@
 package control;
 
+import java.security.NoSuchAlgorithmException;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
@@ -44,73 +45,64 @@ public class Login extends HttpServlet {
 	/**
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
-		String email = request.getParameter("j_email");
-		String password = request.getParameter("j_password");
-		String redirectedPage = "/loginPage.jsp";
-		Boolean control = false;
-		try {
-			Connection con = DriverManagerConnectionPool.getConnection();
-			String sql = "SELECT email, passwordUser, ruolo, nome, cognome, indirizzo, telefono, numero, intestatario, CVV FROM UserAccount";
-			
-			Statement s = con.createStatement();
-			ResultSet rs = s.executeQuery(sql);
-			
-			while (rs.next()) {
-				if (email.compareTo(rs.getString(1)) == 0) {
-					String psw = checkPsw(password);
-					if (psw.compareTo(rs.getString(2)) == 0) {
-						control = true;
-						UserBean registeredUser = new UserBean();
-						registeredUser.setEmail(rs.getString(1));
-						registeredUser.setNome(rs.getString(4));
-						registeredUser.setCognome(rs.getString(5));
-						registeredUser.setIndirizzo(rs.getString(6));
-						registeredUser.setTelefono(rs.getString(7));
-						registeredUser.setNumero(rs.getString(8));
-						registeredUser.setIntestatario(rs.getString(9));
-						registeredUser.setCvv(rs.getString(10));
-						registeredUser.setRole(rs.getString(3));
-						request.getSession().setAttribute("registeredUser", registeredUser);
-						request.getSession().setAttribute("role", registeredUser.getRole());
-						request.getSession().setAttribute("email", rs.getString(1));
-						request.getSession().setAttribute("nome", rs.getString(6));
-						
-						OrderModel model = new OrderModel();
-						request.getSession().setAttribute("listaOrdini", model.getOrders(rs.getString(1)));
-						
-						redirectedPage = "/index.jsp";
-						DriverManagerConnectionPool.releaseConnection(con);
-					}
-				}
-			}
-		}
-		catch (Exception e) {
-			redirectedPage = "/loginPage.jsp";
-		}
-		if (control == false) {
-			request.getSession().setAttribute("login-error", true);
-		}
-		else {
-			request.getSession().setAttribute("login-error", false);
-		}
-		response.sendRedirect(request.getContextPath() + redirectedPage);
-	}
-		
-	private String checkPsw(String psw) {
-		MessageDigest md = null;
-		try {
-			md = MessageDigest.getInstance("MD5");
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-		byte[] messageDigest = md.digest(psw.getBytes());
-		BigInteger number = new BigInteger(1, messageDigest);
-		String hashtext = number.toString(16);
-		
-		return hashtext;
-	}
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        String email = request.getParameter("j_email");
+        String password = request.getParameter("j_password");
+        String redirectedPage = "/loginPage.jsp";
+        Boolean control = false;
+        try {
+            Connection con = DriverManagerConnectionPool.getConnection();
+            String sql = "SELECT email, passwordUser, ruolo, nome, cognome, indirizzo, telefono, numero, intestatario, CVV FROM UserAccount WHERE email = ?";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, email);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                String hashedPassword = rs.getString("passwordUser");
+                if (checkPassword(password, hashedPassword)) {
+                    control = true;
+                    UserBean registeredUser = new UserBean();
+                    registeredUser.setEmail(rs.getString("email"));
+                    registeredUser.setNome(rs.getString("nome"));
+                    registeredUser.setCognome(rs.getString("cognome"));
+                    registeredUser.setIndirizzo(rs.getString("indirizzo"));
+                    registeredUser.setTelefono(rs.getString("telefono"));
+                    registeredUser.setNumero(rs.getString("numero"));
+                    registeredUser.setIntestatario(rs.getString("intestatario"));
+                    registeredUser.setCvv(rs.getString("CVV"));
+                    registeredUser.setRole(rs.getString("ruolo"));
+                    request.getSession().setAttribute("registeredUser", registeredUser);
+                    request.getSession().setAttribute("role", registeredUser.getRole());
+                    request.getSession().setAttribute("email", rs.getString("email"));
+                    request.getSession().setAttribute("nome", rs.getString("indirizzo"));
+
+                    OrderModel model = new OrderModel();
+                    request.getSession().setAttribute("listaOrdini", model.getOrders(rs.getString("email")));
+
+                    redirectedPage = "/index.jsp";
+                    DriverManagerConnectionPool.releaseConnection(con);
+                }
+            }
+        } catch (Exception e) {
+            redirectedPage = "/loginPage.jsp";
+        }
+        if (!control) {
+            request.getSession().setAttribute("login-error", true);
+        } else {
+            request.getSession().setAttribute("login-error", false);
+        }
+        response.sendRedirect(request.getContextPath() + redirectedPage);
+    }
+
+    private boolean checkPassword(String password, String hashedPassword) throws NoSuchAlgorithmException {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte[] hashedPasswordBytes = md.digest(password.getBytes());
+        StringBuilder sb = new StringBuilder();
+        for (byte b : hashedPasswordBytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString().equals(hashedPassword);
+    }
 
 }
